@@ -6,6 +6,7 @@ from torch._guards import Guard, GuardSource
 
 from .. import variables
 from ..bytecode_transformation import create_call_function, create_instruction
+from ..device_function import stream_function_container
 from ..exc import unimplemented
 from ..guards import GuardBuilder
 from ..source import AttrSource
@@ -363,9 +364,9 @@ class StreamContextVariable(ContextWrappingVariable):
     def create(tx, target_value, **kwargs):
         from .builder import wrap_fx_proxy_cls
 
-        current_stream_function = torch._device_runtime.stream_function_container[
-            "current_stream"
-        ][target_value.device]
+        current_stream_function = stream_function_container["current_stream"][
+            target_value.device
+        ]
         current_stream = wrap_fx_proxy_cls(
             StreamVariable,
             tx,
@@ -388,9 +389,7 @@ class StreamContextVariable(ContextWrappingVariable):
             target_values=target_values, initial_values=initial_values, **kwargs
         )
         self.device = device
-        self.set_stream_func = torch._device_runtime.stream_function_container[
-            "set_stream"
-        ][self.device]
+        self.set_stream_func = stream_function_container["set_stream"][self.device]
 
     def enter(self, tx):
         # stream generated inside of traced function
@@ -406,9 +405,7 @@ class StreamContextVariable(ContextWrappingVariable):
             stream = self.target_values[0].value
             tx.output.create_proxy(
                 "call_function",
-                torch._device_runtime.stream_function_container["set_stream_by_id"][
-                    self.device
-                ],
+                stream_function_container["set_stream_by_id"][self.device],
                 (stream.stream_id, stream.device_index, stream.device_type),
                 {},
             )

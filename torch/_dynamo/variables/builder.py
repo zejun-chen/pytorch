@@ -28,6 +28,7 @@ from torch.utils.weak import TensorWeakRef, WeakIdRef
 
 from .. import config, mutation_guard, replay_record, skipfiles
 from ..allowed_functions import is_allowed, is_builtin_callable, is_numpy
+from ..device_function import stream_function_container
 from ..exc import unimplemented
 from ..guards import GuardBuilder, make_dupe_guard
 from ..side_effects import SideEffects
@@ -43,7 +44,6 @@ from ..source import (
     TupleIteratorGetItemSource,
 )
 
-# from ..stream import StreamFunctionContainer
 from ..utils import (
     build_checkpoint_variable,
     clone_input,
@@ -1338,9 +1338,7 @@ def wrap_fx_proxy_cls(
     elif (
         inspect.isclass(proxy.node.target)
         and issubclass(proxy.node.target, torch.Stream)
-    ) or proxy.node.target in torch._device_runtime.stream_function_container[
-        "current_stream"
-    ].values():
+    ) or proxy.node.target in stream_function_container["current_stream"].values():
         proxy.node.meta["example_value"] = example_value
         return StreamVariable(
             proxy, example_value, example_value.device.type, **options

@@ -15,6 +15,7 @@ from torch._dynamo.variables import UserFunctionVariable
 
 from .. import config, variables
 from ..allowed_functions import torch_get_name
+from ..device_function import stream_function_container
 from ..exc import unimplemented
 from ..source import GeneratorStateSource
 from ..utils import (
@@ -330,10 +331,7 @@ class TorchVariable(VariableTracker):
         elif self.value is torch._C.DisableTorchFunctionSubclass:
             assert not (args or kwargs)
             return TorchFunctionDisableVariable.create(tx, **options)
-        elif (
-            self.value
-            in torch._device_runtime.stream_function_container["stream"].values()
-        ):
+        elif self.value in stream_function_container["stream"].values():
             log.warning("%s not fully supported, streams may be ignored", self.value)
             assert len(args) == 1
             return StreamContextVariable.create(tx, args[0], **options)
