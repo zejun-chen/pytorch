@@ -22,6 +22,7 @@ import torch
 import torch._C
 from torch.types import Device
 from .. import device as _device
+from .._stream_context_base import StreamContextBase
 from .._utils import classproperty
 from ._utils import _dummy_type, _get_device_index
 from .graphs import (
@@ -465,7 +466,7 @@ def can_device_access_peer(device: _device_t, peer_device: _device_t) -> bool:
     return torch._C._cuda_canDeviceAccessPeer(device, peer_device)
 
 
-class StreamContext:
+class StreamContext(StreamContextBase):
     r"""Context-manager that selects a given stream.
 
     All CUDA kernels queued within its context will be enqueued on a selected
@@ -534,6 +535,21 @@ def stream(stream: Optional["torch.cuda.Stream"]) -> StreamContext:
     return StreamContext(stream)
 
 
+def set_stream_by_id(stream_id: int, device_index: int, device_type: int):
+    r"""set stream specified by the stream id, device index and
+        device type
+
+    Args: stream_id (int): stream id in stream pool
+          device_index (int): device index in topo
+          device_type (int): enum device type
+    """
+    torch._C._cuda_setStream(
+        stream_id=stream_id,
+        device_index=device_index,
+        device_type=device_type,
+    )
+
+
 def set_stream(stream: Stream):
     r"""Sets the current stream.This is a wrapper API to set the stream.
         Usage of this function is discouraged in favor of the ``stream``
@@ -545,7 +561,7 @@ def set_stream(stream: Stream):
     """
     if stream is None:
         return
-    torch._C._cuda_setStream(
+    set_stream_by_id(
         stream_id=stream.stream_id,
         device_index=stream.device_index,
         device_type=stream.device_type,

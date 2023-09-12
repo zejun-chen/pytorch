@@ -1,4 +1,5 @@
 import collections
+import inspect
 import logging
 
 import math
@@ -211,11 +212,11 @@ class TorchVariable(VariableTracker):
     ) -> "VariableTracker":
         from . import (
             ConstantVariable,
-            CUDAStreamContextVariable,
-            CUDAStreamVariable,
             DeterministicAlgorithmsVariable,
             DisabledSavedTensorsHooksVariable,
             GradModeVariable,
+            StreamContextVariable,
+            StreamVariable,
             SymNodeVariable,
             TensorVariable,
             UserDefinedObjectVariable,
@@ -338,19 +339,20 @@ class TorchVariable(VariableTracker):
         elif self.value is torch._C.DisableTorchFunctionSubclass:
             assert not (args or kwargs)
             return TorchFunctionDisableVariable.create(tx, **options)
-        elif self.value is torch.cuda.stream:
-            log.warning(
-                "torch.cuda.stream() not fully supported, streams may be ignored"
-            )
+        elif (
+            self.value
+            in torch._device_runtime.stream_function_container["stream"].values()
+        ):
+            log.warning("%s not fully supported, streams may be ignored", self.value)
             assert len(args) == 1
-            return CUDAStreamContextVariable.create(tx, args[0], **options)
-        elif self.value is torch.cuda.streams.Stream:
+            return StreamContextVariable.create(tx, args[0], **options)
+        elif inspect.isclass(self.value) and issubclass(self.value, torch.Stream):
             return wrap_fx_proxy_cls(
-                CUDAStreamVariable,
+                StreamVariable,
                 tx,
                 tx.output.create_proxy(
                     "call_function",
-                    torch.cuda.streams.Stream,
+                    self.value,
                     (),
                     {},
                 ),
