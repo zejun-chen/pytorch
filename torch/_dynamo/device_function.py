@@ -1,15 +1,17 @@
-from typing import Dict, Union, Optional, List, Callable
 import warnings
+from typing import Dict, Optional, Union
 
 import torch
 
 _device_t = Union[torch.device, str, int, None]
 
-class GPUFunction:
+
+class GPURuntimeInterface:
     """
     This is a simple device runtime abstraction for Inductor. It enables custom
     backends to be integrated with Inductor in a device-agnostic semantic.
     """
+
     class Event:
         def __new__(cls, *args, **kwargs):
             raise NotImplementedError()
@@ -66,8 +68,8 @@ class GPUFunction:
     def get_compute_capability(device: _device_t = None):
         raise NotImplementedError()
 
-class CudaFunction(GPUFunction):
 
+class CudaRuntimeInterface(GPURuntimeInterface):
     stream_func = torch.cuda.stream
     current_stream_func = torch.cuda.current_stream
     set_stream_func = torch.cuda.set_stream
@@ -116,6 +118,7 @@ class CudaFunction(GPUFunction):
     @staticmethod
     def get_raw_stream(device: int):
         from torch._C import _cuda_getCurrentRawStream as get_cuda_stream
+
         return get_cuda_stream(device)
 
     @staticmethod
@@ -131,31 +134,24 @@ class CudaFunction(GPUFunction):
         major, min = torch.cuda.get_device_capability(device)
         return major * 10 + min
 
-device_functions: Dict[str, GPUFunction] = {}
 
-'''
-This container is used to contain all stream-related functions for dynamo capture
-'''
-stream_function_container: Dict[str, Dict[str, Callable]] = {}
+device_functions: Dict[str, GPURuntimeInterface] = {}
 
-def _register_stream_function_for_device(device: str, device_function: GPUFunction):
-    stream_function_container['stream'] = {device: getattr(device_function, 'stream_func', Callable)}
-    stream_function_container['set_stream'] = {device: getattr(device_function, 'set_stream_func', Callable)}
-    stream_function_container['current_stream'] = {device: getattr(device_function, 'current_stream_func', Callable)}
-    stream_function_container['set_stream_by_id'] = {device: getattr(device_function, 'set_stream_by_id_func', Callable)}
 
-def register_function_for_device(device: str, device_function: GPUFunction):
+def register_runtime_interface_for_device(
+    device: str, device_function: GPURuntimeInterface
+):
     if device in device_functions:
-        warnings.warn(
-            "device {device} has been register already"
-        )
+        warnings.warn("device {device} has been register already")
     device_functions[device] = device_function
-    _register_stream_function_for_device(device, device_function)
 
-def get_function_for_device(device: str):
+
+def get_runtime_interface_for_device(device: str):
     return device_functions[device] if device in device_functions else None
+
 
 def get_registered_device_functions():
     return device_functions.items()
 
-register_function_for_device("cuda", CudaFunction)
+
+register_runtime_interface_for_device("cuda", CudaRuntimeInterface)
