@@ -1,4 +1,5 @@
 import collections
+import inspect
 import logging
 
 import math
@@ -13,7 +14,6 @@ import torch.onnx.operators
 from torch._dynamo.variables import UserFunctionVariable
 
 from .. import config, variables
-from ..stream import StreamMethodContainer
 from ..allowed_functions import torch_get_name
 from ..exc import unimplemented
 from ..source import GeneratorStateSource
@@ -208,11 +208,11 @@ class TorchVariable(VariableTracker):
     ) -> "VariableTracker":
         from . import (
             ConstantVariable,
-            StreamContextVariable,
-            StreamVariable,
             DeterministicAlgorithmsVariable,
             DisabledSavedTensorsHooksVariable,
             GradModeVariable,
+            StreamContextVariable,
+            StreamVariable,
             SymNodeVariable,
             TensorVariable,
             UserDefinedObjectVariable,
@@ -330,30 +330,20 @@ class TorchVariable(VariableTracker):
         elif self.value is torch._C.DisableTorchFunctionSubclass:
             assert not (args or kwargs)
             return TorchFunctionDisableVariable.create(tx, **options)
-        elif any(
-            [self.value is method for method in
-             StreamMethodContainer().get_all_methods('create_stream_context')]
+        elif (
+            self.value
+            in torch._device_runtime.stream_function_container["stream"].values()
         ):
-            log.warning(
-                str(StreamMethodContainer().get_method_by_device('create_stream_context', args[0].device)) +
-                "not fully supported, streams may be ignored"
-            )
+            log.warning("%s not fully supported, streams may be ignored", self.value)
             assert len(args) == 1
             return StreamContextVariable.create(tx, args[0], **options)
-        elif any(
-            [self.value is method for method in
-             StreamMethodContainer().get_all_methods('stream_class')]
-        ):
-            match_device = None
-            for device, method in StreamMethodContainer().stream_class_method.items():
-                if self.value is method:
-                    match_device = device
+        elif inspect.isclass(self.value) and issubclass(self.value, torch.Stream):
             return wrap_fx_proxy_cls(
                 StreamVariable,
                 tx,
                 tx.output.create_proxy(
                     "call_function",
-                    StreamMethodContainer().get_method_by_device('stream_class', match_device),
+                    self.value,
                     (),
                     {},
                 ),

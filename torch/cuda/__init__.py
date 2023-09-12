@@ -22,6 +22,7 @@ import torch
 import torch._C
 from torch.types import Device
 from .. import device as _device
+from .._stream_context_base import StreamContextBase
 from .._utils import classproperty
 from ._utils import _dummy_type, _get_device_index
 from .graphs import (
@@ -465,7 +466,7 @@ def can_device_access_peer(device: _device_t, peer_device: _device_t) -> bool:
     return torch._C._cuda_canDeviceAccessPeer(device, peer_device)
 
 
-class StreamContext:
+class StreamContext(StreamContextBase):
     r"""Context-manager that selects a given stream.
 
     All CUDA kernels queued within its context will be enqueued on a selected
@@ -534,7 +535,7 @@ def stream(stream: Optional["torch.cuda.Stream"]) -> StreamContext:
     return StreamContext(stream)
 
 
-def set_stream_by_id(stream_id, device_index, device_type):
+def set_stream_by_id(stream_id: int, device_index: int, device_type: int):
     r"""set stream specified by the stream id, device index and
         device type
 

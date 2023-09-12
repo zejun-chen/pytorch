@@ -1438,6 +1438,8 @@ _C._init_names(list(torch._storage_classes))
 from . import _torch_docs, _tensor_docs, _storage_docs
 del _torch_docs, _tensor_docs, _storage_docs
 
+# register cuda runtime functions
+from torch.cuda import _runtime
 
 def compiled_with_cxx11_abi():
     r"""Returns whether PyTorch was built with _GLIBCXX_USE_CXX11_ABI=1"""
