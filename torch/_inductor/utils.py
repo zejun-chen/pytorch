@@ -36,9 +36,9 @@ from unittest import mock
 import sympy
 
 import torch
-from torch._dynamo.device_interface import get_interface_for_device
 from torch.autograd import DeviceType
 from torch.autograd.profiler_util import EventList
+from torch.device_interface import get_interface_for_device
 from torch.fx.immutable_collections import immutable_list
 from torch.utils._sympy.functions import CeilDiv, CleanDiv, FloorDiv, ModularIndexing
 

@@ -36,14 +36,14 @@ from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING, Union
 
 import torch
-
-from torch._dynamo.device_interface import (
-    get_interface_for_device,
-    get_registered_device_interfaces,
-)
 from torch._inductor import config, exc
 from torch._inductor.codegen.cuda import cuda_env
 from torch._inductor.utils import developer_warning, is_linux
+
+from torch.device_interface import (
+    get_interface_for_device,
+    get_registered_device_interfaces,
+)
 
 if TYPE_CHECKING:
     from torch._inductor.graph import GraphLowering
