@@ -1,6 +1,6 @@
 import functools
 
-from torch._dynamo.device_interface import get_interface_for_device
+from torch.device_interface import get_interface_for_device
 
 
 @functools.lru_cache(None)

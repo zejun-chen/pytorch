@@ -3,10 +3,10 @@ from typing import Dict, List
 
 import torch._C
 from torch._guards import Guard
+from ...device_interface import get_interface_for_device
 
 from .. import variables
 from ..bytecode_transformation import create_call_function, create_instruction
-from ..device_interface import get_interface_for_device
 from ..exc import unimplemented, Unsupported
 from ..guards import GuardBuilder
 from ..source import AttrSource, GlobalStateSource

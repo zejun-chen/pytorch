@@ -7,8 +7,6 @@ import re
 import types
 from typing import Dict, List
 
-from torch.streambase import StreamBase
-
 try:
     import numpy as np
 except ModuleNotFoundError:
@@ -20,10 +18,14 @@ import torch.fx
 import torch.nn
 import torch.onnx.operators
 from torch._dynamo.variables import UserFunctionVariable
+from torch.device_interface import (
+    device_interfaces,
+    DeviceInterface,
+    get_interface_for_device,
+)
 
 from .. import config, variables
 from ..allowed_functions import torch_get_name
-from ..device_interface import device_interfaces, get_interface_for_device
 from ..exc import unimplemented
 from ..utils import (
     check_constant_args,
@@ -364,7 +366,9 @@ class TorchVariable(VariableTracker):
             )
             assert len(args) == 1
             return StreamContextVariable.create(tx, args[0], **options)
-        elif inspect.isclass(self.value) and issubclass(self.value, StreamBase):
+        elif inspect.isclass(self.value) and issubclass(
+            self.value, DeviceInterface.Stream
+        ):
             return wrap_fx_proxy_cls(
                 StreamVariable,
                 tx,

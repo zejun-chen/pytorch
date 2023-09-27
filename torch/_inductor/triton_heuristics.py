@@ -17,8 +17,8 @@ from typing import Any, Callable, List, Optional, Set, Tuple
 import torch
 
 import torch.autograd.profiler as autograd_profiler
-from torch._dynamo.device_interface import get_interface_for_device
 from torch._dynamo.utils import dynamo_timed
+from torch.device_interface import get_interface_for_device
 from torch.utils._triton import has_triton, has_triton_package
 
 from . import config

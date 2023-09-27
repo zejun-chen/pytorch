@@ -1287,6 +1287,16 @@ def _register_triton_kernels():
 _lazy_call(_register_triton_kernels)
 
 
+# register runtime interface for cuda backend
+def _register_runtime_interface():
+    from .interface_register import CudaInterface
+
+    torch.device_interface.register_interface_for_device("cuda", CudaInterface)
+
+
+_lazy_call(_register_runtime_interface)
+
+
 from . import amp, jiterator, nvtx, profiler, sparse
 
 __all__ = [

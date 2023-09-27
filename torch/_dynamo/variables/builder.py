@@ -22,6 +22,8 @@ from torch import SymInt
 from torch._guards import GuardSource, TracingContext
 from torch._ops import HigherOrderOperator
 from torch._subclasses.fake_tensor import FakeTensor, is_fake, maybe_get_fake_mode
+
+from torch.device_interface import device_interfaces, DeviceInterface
 from torch.fx.experimental.symbolic_shapes import (
     _constrain_range_for_size,
     DimConstraint,
@@ -29,7 +31,6 @@ from torch.fx.experimental.symbolic_shapes import (
     RelaxedUnspecConstraint,
 )
 from torch.fx.immutable_collections import immutable_list
-from torch.streambase import EventBase, StreamBase
 from torch.utils._python_dispatch import is_traceable_wrapper_subclass
 from torch.utils.weak import TensorWeakRef, WeakIdRef
 from .. import config, mutation_guard, replay_record, skipfiles
@@ -39,8 +40,6 @@ from ..allowed_functions import (
     is_numpy,
     is_user_defined_allowed,
 )
-
-from ..device_interface import device_interfaces
 from ..exc import unimplemented
 from ..guards import GuardBuilder, make_dupe_guard
 from ..side_effects import SideEffects
@@ -631,7 +630,7 @@ class VariableBuilder:
                 value,
                 guards=make_guards(GuardBuilder.FUNCTION_MATCH),
             )
-        elif isinstance(value, StreamBase):
+        elif isinstance(value, DeviceInterface.Stream):
             return StreamVariable(
                 None,
                 value,
@@ -639,7 +638,7 @@ class VariableBuilder:
                 source=self.source,
                 guards=make_guards(GuardBuilder.ID_MATCH),
             )
-        elif isinstance(value, EventBase):
+        elif isinstance(value, DeviceInterface.Event):
             return EventVariable(
                 None,
                 value,
@@ -1515,7 +1514,8 @@ def wrap_fx_proxy_cls(
         proxy.node.meta["example_value"] = example_value
         return SymNodeVariable(proxy, example_value, **options)
     elif (
-        inspect.isclass(proxy.node.target) and issubclass(proxy.node.target, StreamBase)
+        inspect.isclass(proxy.node.target)
+        and issubclass(proxy.node.target, DeviceInterface.Stream)
     ) or proxy.node.target in [
         interface_elem.current_stream for interface_elem in device_interfaces.values()
     ]:
@@ -1524,7 +1524,8 @@ def wrap_fx_proxy_cls(
             proxy, example_value, example_value.device.type, **options
         )
     elif (
-        inspect.isclass(proxy.node.target) and issubclass(proxy.node.target, EventBase)
+        inspect.isclass(proxy.node.target)
+        and issubclass(proxy.node.target, DeviceInterface.Event)
     ) or proxy.node.target in [
         interface_elem.Event for interface_elem in device_interfaces.values()
     ]:
@@ -1535,7 +1536,7 @@ def wrap_fx_proxy_cls(
         return ConstantVariable(example_value, **options)
     elif (
         example_value is not None
-        and isinstance(example_value, EventBase)
+        and isinstance(example_value, DeviceInterface.Event)
         and proxy.node.target == "record_event"
         and proxy.node.op == "call_method"
     ):
