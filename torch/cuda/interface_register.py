@@ -1,14 +1,19 @@
 import torch
-from torch.device_interface import DeviceInterface, register_interface_for_device
-from torch.device_interface import caching_worker_device_properties, caching_worker_current_devices
+from torch.device_interface import (
+    caching_worker_current_devices,
+    caching_worker_device_properties,
+    DeviceInterface,
+)
 
 if torch.cuda._is_compiled():
     from torch._C import _cuda_getCurrentRawStream as get_cuda_stream
 else:
     get_cuda_stream = None
 
-from typing import Any, Dict, Union
+from typing import Union
+
 _device_t = Union[torch.device, str, int, None]
+
 
 class CudaInterface(DeviceInterface):
     Event = torch.cuda.Event

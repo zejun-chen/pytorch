@@ -1,5 +1,6 @@
 from torch.device_interface import DeviceInterface, get_interface_for_device
 
+
 # TODO: OOB. torch.cuda.current_stream()  -->  torch.gpu.current_stream(device_type='cuda')
 # TODO: OOB. torch.cuda.Event()  -->  torch.gpu.Event(device_type='cuda')
 # TODO: OOB. torch.cuda.synchronize()  -->  torch.gpu.synchronize(device_type='cuda')
@@ -8,15 +9,25 @@ from torch.device_interface import DeviceInterface, get_interface_for_device
 class gpu:
     def __getattr__(self, name):
         if not hasattr(DeviceInterface, name):
-            raise RuntimeError("device interface cannot find runtime API for {}".format(name))
+            raise RuntimeError(f"device interface cannot find runtime API for {name}")
 
     class Stream:
         def __init__(self, device_type: str, device=None, priority=0, **kwargs):
-            return get_interface_for_device(device_type).Stream(device, priority, **kwargs)
+            return get_interface_for_device(device_type).Stream(
+                device, priority, **kwargs
+            )
 
     class Event:
-        def __init__(self, device_type: str, enable_timing=False, blocking=False, interprocess=False):
-            return get_interface_for_device(device_type).Event(enable_timing, blocking, interprocess)
+        def __init__(
+            self,
+            device_type: str,
+            enable_timing=False,
+            blocking=False,
+            interprocess=False,
+        ):
+            return get_interface_for_device(device_type).Event(
+                enable_timing, blocking, interprocess
+            )
 
     @staticmethod
     def current_device(device_type: str):
@@ -47,8 +58,12 @@ class gpu:
         get_interface_for_device(device_type).set_stream(stream)
 
     @staticmethod
-    def set_stream_by_id(device_type: str, stream_id: int, device_index: int, device_type_id: int):
-        get_interface_for_device(device_type).set_stream_by_id(stream_id, device_index, device_type_id)
+    def set_stream_by_id(
+        device_type: str, stream_id: int, device_index: int, device_type_id: int
+    ):
+        get_interface_for_device(device_type).set_stream_by_id(
+            stream_id, device_index, device_type_id
+        )
 
     @staticmethod
     def get_raw_stream(device_type: str):
