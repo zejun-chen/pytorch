@@ -175,6 +175,15 @@ class CtxManagerTests(torch._dynamo.test_case.TestCase):
             x = torch.add(x, 2)
             with torch.cuda.stream(s):
                 x = torch.relu(x)
+
+            s1 = torch.cuda.current_stream()
+            with torch.cuda.stream(s1):
+                x = torch.relu(x)
+
+            s2 = torch.cuda.Stream()
+            with torch.cuda.stream(s2):
+                x = torch.relu(x)
+
             x = torch.add(x, 1)
             x = torch.cos(x)
             return x
@@ -184,11 +193,10 @@ class CtxManagerTests(torch._dynamo.test_case.TestCase):
         ref = fn(x, s)
         cnts = torch._dynamo.testing.CompileCounter()
         opt_fn = torch._dynamo.optimize(cnts, nopython=True)(fn)
-        with self.assertRaisesRegex(
-            torch._dynamo.exc.Unsupported,
-            "CUDAStreamVariable does not currently work soundly.",
-        ):
-            res = opt_fn(x, s)
+        res = opt_fn(x, s)
+        self.assertTrue(same(ref, res))
+        self.assertEqual(cnts.frame_count, 1)
+        self.assertEqual(cnts.op_count, 18)
 
     def test_autograd_profiler_enabled(self):
         def fn(x):

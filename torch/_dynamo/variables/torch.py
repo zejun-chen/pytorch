@@ -19,6 +19,7 @@ import torch.onnx.operators
 from torch._dynamo.variables import UserFunctionVariable
 
 from .. import config, variables
+from ..stream import StreamMethodContainer
 from ..allowed_functions import torch_get_name
 from ..exc import unimplemented
 from ..utils import (
@@ -217,8 +218,8 @@ class TorchVariable(VariableTracker):
     ) -> "VariableTracker":
         from . import (
             ConstantVariable,
-            CUDAStreamContextVariable,
-            CUDAStreamVariable,
+            StreamContextVariable,
+            StreamVariable,
             DeterministicAlgorithmsVariable,
             DisabledSavedTensorsHooksVariable,
             GradModeVariable,
@@ -348,19 +349,30 @@ class TorchVariable(VariableTracker):
         elif self.value is torch._C.DisableTorchFunctionSubclass:
             assert not (args or kwargs)
             return TorchFunctionDisableVariable.create(tx, **options)
-        elif self.value is torch.cuda.stream:
+        elif any(
+            [self.value is method for method in
+             StreamMethodContainer().get_all_methods('create_stream_context')]
+        ):
             log.warning(
-                "torch.cuda.stream() not fully supported, streams may be ignored"
+                str(StreamMethodContainer().get_method_by_device('create_stream_context', args[0].device)) +
+                "not fully supported, streams may be ignored"
             )
             assert len(args) == 1
-            return CUDAStreamContextVariable.create(tx, args[0], **options)
-        elif self.value is torch.cuda.streams.Stream:
+            return StreamContextVariable.create(tx, args[0], **options)
+        elif any(
+            [self.value is method for method in
+             StreamMethodContainer().get_all_methods('stream_class')]
+        ):
+            match_device = None
+            for device, method in StreamMethodContainer().stream_class_method.items():
+                if self.value is method:
+                    match_device = device
             return wrap_fx_proxy_cls(
-                CUDAStreamVariable,
+                StreamVariable,
                 tx,
                 tx.output.create_proxy(
                     "call_function",
-                    torch.cuda.streams.Stream,
+                    StreamMethodContainer().get_method_by_device('stream_class', match_device),
                     (),
                     {},
                 ),

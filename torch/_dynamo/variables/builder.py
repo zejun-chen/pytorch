@@ -32,6 +32,7 @@ from torch.fx.immutable_collections import immutable_list
 from torch.utils._python_dispatch import is_traceable_wrapper_subclass
 from torch.utils.weak import TensorWeakRef, WeakIdRef
 
+from ..stream import StreamMethodContainer
 from .. import config, mutation_guard, replay_record, skipfiles
 from ..allowed_functions import (
     is_allowed,
@@ -78,7 +79,7 @@ from ..utils import (
 from .base import MutableLocal, typestr, VariableTracker
 from .builtin import BuiltinVariable
 from .constant import ConstantVariable, EnumVariable
-from .ctx_manager import CUDAStreamVariable, NullContextVariable
+from .ctx_manager import StreamVariable, NullContextVariable
 from .dicts import (
     ConstDictVariable,
     DataClassVariable,
@@ -629,14 +630,16 @@ class VariableBuilder:
                 value,
                 guards=make_guards(GuardBuilder.FUNCTION_MATCH),
             )
-        elif isinstance(value, torch.cuda.streams.Stream):
-            unimplemented("CUDAStreamVariable does not currently work soundly.")
-            # return CUDAStreamVariable(
-            #     None,
-            #     value,
-            #     source=self.source,
-            #     guards=self.make_guards(GuardBuilder.ID_MATCH),
-            # )
+        elif any(
+            [isinstance(value, stream_instance) for stream_instance in StreamMethodContainer().get_all_methods('stream_class')]
+        ):
+            return StreamVariable(
+                None,
+                value,
+                value.device.type,
+                source=self.source,
+                guards=self.make_guards(GuardBuilder.ID_MATCH),
+            )
         elif (
             isinstance(value, torch._C._TensorMeta)
             and value in config.traceable_tensor_subclasses
@@ -1505,9 +1508,10 @@ def wrap_fx_proxy_cls(
     elif isinstance(example_value, (torch.SymInt, torch.SymFloat, torch.SymBool)):
         proxy.node.meta["example_value"] = example_value
         return SymNodeVariable(proxy, example_value, **options)
-    elif proxy.node.target in [torch.cuda.streams.Stream, torch.cuda.current_stream]:
+    elif proxy.node.target in StreamMethodContainer().get_all_methods('stream_class') or \
+            proxy.node.target in StreamMethodContainer().get_all_methods('current_stream'):
         proxy.node.meta["example_value"] = example_value
-        return CUDAStreamVariable(proxy, example_value, **options)
+        return StreamVariable(proxy, example_value, example_value.device.type, **options)
     elif isinstance(example_value, int) and proxy.node.target in [
         torch.sym_int,
         getattr,
