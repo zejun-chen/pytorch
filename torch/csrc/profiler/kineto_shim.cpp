@@ -2,6 +2,7 @@
 #include <torch/csrc/profiler/kineto_shim.h>
 
 #ifdef USE_KINETO
+#include <c10/kineto_plugin/register_api.h>
 #include <libkineto.h>
 #endif
 
@@ -231,6 +232,8 @@ void prepareTrace(
     libkineto_init(/*cpuOnly=*/cpuOnly, /*logOnError=*/true);
     libkineto::api().suppressLogMessages();
   }
+
+  c10::kineto_plugin::registerKinetoPluginProfiler();
 
   if (!libkineto::api().isProfilerInitialized()) {
     libkineto::api().initProfilerIfRegistered();
