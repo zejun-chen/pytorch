@@ -2,6 +2,7 @@
 #include <torch/csrc/profiler/kineto_shim.h>
 
 #ifdef USE_KINETO
+#include <ATen/KinetoPluginAPI.h>
 #include <libkineto.h>
 #endif
 
@@ -44,6 +45,7 @@ const std::set<libkineto::ActivityType> kXpuTypes = {
     libkineto::ActivityType::CONCURRENT_KERNEL,
     // XPU_RUNTIME appears in both kCpuTypes and kXpuTypes.
     libkineto::ActivityType::XPU_RUNTIME,
+    libkineto::ActivityType::OVERHEAD,
 };
 const std::set<libkineto::ActivityType> kMtiaTypes = {
     libkineto::ActivityType::MTIA_CCP_EVENTS,
@@ -230,6 +232,7 @@ void prepareTrace(
   if (!libkineto::api().isProfilerRegistered()) {
     libkineto_init(/*cpuOnly=*/cpuOnly, /*logOnError=*/true);
     libkineto::api().suppressLogMessages();
+    at::kineto_plugin::registerKinetoPluginProfiler();
   }
 
   if (!libkineto::api().isProfilerInitialized()) {
@@ -371,6 +374,7 @@ c10::DeviceType deviceTypeFromActivity(libkineto::ActivityType activity_type) {
     case libkineto::ActivityType::GLOW_RUNTIME:
     case libkineto::ActivityType::MTIA_RUNTIME:
     case libkineto::ActivityType::PYTHON_FUNCTION:
+    case libkineto::ActivityType::OVERHEAD:
     case libkineto::ActivityType::CUDA_DRIVER:
     case libkineto::ActivityType::PRIVATEUSE1_RUNTIME:
     case libkineto::ActivityType::PRIVATEUSE1_DRIVER:

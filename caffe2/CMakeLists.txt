@@ -1037,6 +1037,17 @@ if(USE_XPU)
   add_library(torch_xpu ${Caffe2_XPU_SRCS})
   torch_compile_options(torch_xpu)  # see cmake/public/utils.cmake
   target_compile_options_if_supported(torch_xpu "-Wno-deprecated-copy")  # see cmake/public/utils.cmake
+  if(USE_KINETO)
+    find_package(Pti)
+    if(TARGET Pti::pti_view)
+      target_compile_options(torch_xpu PRIVATE "-DUSE_KINETO")
+      target_include_directories(torch_xpu PRIVATE
+          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../third_party/kineto/libkineto/include>)
+      set(TORCH_XPU_PROF_DEPENDENCY_LIBS kineto fmt::fmt-header-only Pti::pti_view)
+    else()
+      set(TORCH_XPU_PROF_DEPENDENCY_LIBS)
+    endif()
+  endif()
   target_compile_definitions(torch_xpu PRIVATE USE_XPU)
 
   # ATen XPU implementation
@@ -1087,6 +1098,9 @@ if(USE_XPU)
     target_link_libraries(torch_xpu PRIVATE torch_xpu_ops)
     target_link_libraries(torch_xpu PRIVATE
       "-Wl,--whole-archive,\"$<TARGET_FILE:torch_xpu_ops>\" -Wl,--no-whole-archive")
+    if(USE_KINETO)
+      target_link_libraries(torch_xpu PRIVATE ${TORCH_XPU_PROF_DEPENDENCY_LIBS})
+    endif()
   endif()
 endif()
 
