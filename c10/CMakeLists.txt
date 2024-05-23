@@ -79,6 +79,13 @@ if(WERROR)
   target_compile_options_if_supported(c10 PRIVATE "-Werror=shadow")
 endif()
 
+if(USE_KINETO)
+  target_link_libraries(c10 PRIVATE kineto)
+  target_compile_options(c10 PRIVATE "-DUSE_KINETO")
+  target_include_directories(c10 PRIVATE
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../third_party/kineto/libkineto/include>)
+endif()
+
 # ---[ Dependency of c10
 if(C10_USE_GFLAGS)
   target_link_libraries(c10 PUBLIC gflags)
