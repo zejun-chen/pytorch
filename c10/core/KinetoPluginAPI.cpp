@@ -26,6 +26,7 @@ void registerKinetoPluginProfiler() {
   for (const auto& pair : plugin_factories) {
     const auto& factory = pair.second;
     libkineto::api().registerProfilerFactory(factory);
+  }
 }
 
 
